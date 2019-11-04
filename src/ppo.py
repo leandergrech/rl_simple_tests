@@ -16,7 +16,6 @@ class PPO:
 	def __init__(self, env_fn, actor_critic=core.mlp_actor_critic, ac_kwargs=dict(), seed=0, steps_per_epoch=4000, epochs=50, gamma=0.99, clip_ratio=0.2, pi_lr=3e-4, vf_lr=1e-3,
 	             train_pi_iters=80, train_v_iters=80, lam=0.97, max_ep_len=1000, target_kl=0.01, logger_kwargs=dict(), save_freq=10):
 		"""
-
 		:param env_fn:  Function which creates copy of the environment. Must satisfy OpenAI Gym API
 		:param actor_critic: Function which takes in placeholder symbols for state 'x_ph' and action 'a_ph' and returns main outputs from agent's Tensorflow computation graph: 'pi', 'logp', 'logp_pi', 'v'
 			'pi': {Shape: (batch, act_dim)} Samples actions from policy given states
@@ -85,6 +84,7 @@ class PPO:
 
 		self.sess = tf.Session()
 		self.sess.run(tf.global_variables_initializer())
+
 
 
 
