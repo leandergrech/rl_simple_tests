@@ -3,7 +3,7 @@ import logging
 import gym
 import numpy as np
 
-from simple_env_graph import simpleEnvGraph
+# from simple_env_graph import simpleEnvGraph
 
 
 class simpleEnv(gym.Env):
@@ -89,6 +89,7 @@ class simpleEnv(gym.Env):
 		return init_state
 
 	def render(self, mode='human'):
+		from simple_env_graph import simpleEnvGraph
 		if self.visualization is None:
 			self.visualization = simpleEnvGraph(title="simpleEnv", adaptive_lims=True)
 

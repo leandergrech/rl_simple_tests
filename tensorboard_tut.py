@@ -19,8 +19,8 @@ def accuracy(predictions, labels):
 batch_size = 80
 # layer_ids = ['hidden1', 'hidden2', 'hidden3', 'hidden4', 'hidden5', 'out']
 # layer_sizes = [784, 500, 400, 300, 200, 100, 10]
-layer_ids = ['hidden1', 'hidden2', 'hidden3', 'hidden4', 'out']
-layer_sizes = [784, 619, 464, 309, 154, 10]
+layer_ids = ['hidden1', 'hidden2', 'out']
+layer_sizes = [784, 450, 250,  10]
 
 tf.reset_default_graph()
 
@@ -96,7 +96,7 @@ n_epochs = 30
 # session = tf.InteractiveSession(config=config)
 session = tf.InteractiveSession()
 
-summary_name = '4-layers-linear_hidden_size-2'
+summary_name = '2-layers'
 if not os.path.exists('summaries'):
 	os.mkdir('summaries')
 if not os.path.exists(os.path.join('summaries', summary_name)):
