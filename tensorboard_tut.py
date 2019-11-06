@@ -56,7 +56,7 @@ optimizer = tf.train.MomentumOptimizer(tf_learning_rate, momentum=0.9)
 grads_and_vars = optimizer.compute_gradients(tf_loss)
 tf_loss_minimize = optimizer.minimize(tf_loss)
 
-# Name scope allows you to group various summaries together
+# Name scope allows you to group various summaries_tut together
 # Summaries having the same name_scope will be displayed on the same row
 with tf.name_scope('performance'):
 	# Summaries need to be displayed
@@ -65,7 +65,7 @@ with tf.name_scope('performance'):
 	# Create a scalar summary object for the loss so it can be displayed
 	tf_loss_summary = tf.summary.scalar('loss', tf_loss_ph)
 
-	# Whenever you need to record the loss, feed the mean test accuracy to this placeholder
+# Whenever you need to record the loss, feed the mean test accuracy to this placeholder
 tf_accuracy_ph = tf.placeholder(tf.float32, shape=None, name='accuracy_summary')
 # Create a scalar summary object for the accuracy so it can be displayed
 tf_accuracy_summary = tf.summary.scalar('accuracy', tf_accuracy_ph)
@@ -78,7 +78,7 @@ for g, v in grads_and_vars:
 			tf_gradnorm_summary = tf.summary.scalar('grad_norm', tf_last_grad_norm)
 			break
 
-# Merge all summaries together
+# Merge all summaries_tut together
 performance_summaries = tf.summary.merge([tf_loss_summary, tf_accuracy_summary])
 
 image_size = 28
@@ -97,12 +97,12 @@ n_epochs = 30
 session = tf.InteractiveSession()
 
 summary_name = '2-layers'
-if not os.path.exists('summaries'):
-	os.mkdir('summaries')
-if not os.path.exists(os.path.join('summaries', summary_name)):
-	os.mkdir(os.path.join('summaries', summary_name))
+if not os.path.exists('summaries_tut'):
+	os.mkdir('summaries_tut')
+if not os.path.exists(os.path.join('summaries_tut', summary_name)):
+	os.mkdir(os.path.join('summaries_tut', summary_name))
 
-summ_writer = tf.summary.FileWriter(os.path.join('summaries', summary_name), session.graph)
+summ_writer = tf.summary.FileWriter(os.path.join('summaries_tut', summary_name), session.graph)
 
 tf.global_variables_initializer().run()
 
@@ -153,10 +153,10 @@ for epoch in range(n_epochs):
 	avg_test_accuracy = np.mean(accuracy_per_epoch)
 	print(f"\tAverage Test Accuracy in epoch {epoch}: {avg_test_accuracy:.5f}")
 
-	# Execute the summaries defined above
+	# Execute the summaries_tut defined above
 	summ = session.run(performance_summaries, feed_dict={tf_loss_ph: avg_loss, tf_accuracy_ph: avg_test_accuracy})
 
-	# Write the obtained summaries to the file, so it can be displayed in the TensorBoard
+	# Write the obtained summaries_tut to the file, so it can be displayed in the TensorBoard
 	summ_writer.add_summary(summ, epoch)
 
 session.close()

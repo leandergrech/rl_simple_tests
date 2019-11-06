@@ -5,6 +5,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 import numpy as np
 import tensorflow as tf
 import time
+import argparse
 
 import spinup.algos.ppo.core as core
 from spinup.algos.ppo.ppo import PPOBuffer
@@ -77,7 +78,8 @@ class PPO:
 		self.get_action_ops = [self.pi, self.v, self.logp_pi]
 
 		# Experience buffer
-		self.local_steps_per_epoch = int(steps_per_epoch / num_procs())
+		# self.local_steps_per_epoch = int(steps_per_epoch / num_procs())
+		self.local_steps_per_epoch = steps_per_epoch
 		self.buf = PPOBuffer(self.obs_dim, self.act_dim, self.local_steps_per_epoch, gamma, lam)
 
 		# Count variables
@@ -98,8 +100,10 @@ class PPO:
 		self.clipfrac = tf.reduce_mean(tf.cast(self.clipped, tf.float32))
 
 		# Optimizers
-		self.train_pi = MpiAdamOptimizer(learning_rate=pi_lr).minimize(self.pi_loss)
-		self.train_v = MpiAdamOptimizer(learning_rate=vf_lr).minimize(self.v_loss)
+		# self.train_pi = MpiAdamOptimizer(learning_rate=pi_lr).minimize(self.pi_loss)
+		# self.train_v = MpiAdamOptimizer(learning_rate=vf_lr).minimize(self.v_loss)
+		self.train_pi = tf.compat.v1.train.AdamOptimizer(learning_rate=pi_lr).minimize(self.pi_loss)
+		self.train_v = tf.compat.v1.train.AdamOptimizer(learning_rate=vf_lr).minimize(self.v_loss)
 
 		self.sess = tf.Session()
 
@@ -107,7 +111,40 @@ class PPO:
 		self.sess.run(tf.global_variables_initializer())
 
 		# Sync parameters across processes
-		self.sess.run(sync_all_params())
+		# self.sess.run(sync_all_params())
+
+		# Tensorboard setting up
+		self.summ_writer = tf.summary.FileWriter(self._setup_summary_dir(), self.sess.graph)
+
+		# Summary placeholders
+		with tf.name_scope('performance'):
+			self.pi_loss_ph = tf.placeholder(dtype=tf.float32, shape=None, name='pi_loss_summary')
+			self.v_loss_ph = tf.placeholder(dtype=tf.float32, shape=None, name='v_loss_summary')
+
+			self.pi_loss_summary = tf.summary.scalar('pi_loss', self.pi_loss_ph)
+			self.v_loss_summary = tf.summary.scalar('v_loss', self.v_loss_ph)
+		self.summaries = tf.summary.merge([self.pi_loss_summary, self.v_loss_summary])
+
+	def _setup_summary_dir(self):
+		cwd = os.getcwd()
+		# TODO Check how many summaries exist with the same name and append a counter to the name
+		summary_dir = f"ppo-{self.epochs}epochs-{self.steps_per_epoch}steps"
+		summary_path = "summaries"
+
+		# os.chdir(os.path.pardir)
+		#
+		# if not os.path.exists(summary_path):
+		# 	try:
+		# 		os.makedirs(summary_path)
+		# 	except:
+		#
+		#
+		# os.chdir(summary_path)
+		# if not os.path.exists(summary_dir):
+		# 	os.mkdir(summary_dir)
+		#
+		# os.chdir(cwd)
+		return summary_dir
 
 	def update(self):
 		inputs = {k: v for k, v in zip(self.all_phs, self.buf.get())}
@@ -116,7 +153,7 @@ class PPO:
 		# Training
 		for i in range(self.train_pi_iters):
 			_, kl = self.sess.run([self.train_pi, self.approx_kl], feed_dict=inputs)
-			kl = mpi_avg(kl)
+			# kl = mpi_avg(kl)
 			if kl > 1.5 * self.target_kl:
 				self.logger.log(f"Early stopping at step {i} fue to reaching max kl.")
 				break
@@ -129,6 +166,8 @@ class PPO:
 												  feed_dict=inputs)
 		self.logger.store(LossPi=pi_l_old, LossV=v_l_old, KL=kl, Entropy=ent, ClipFrac=cf,
 						  DeltaLossPi=(pi_l_new - pi_l_old), DeltaLossV=(v_l_new - v_l_old))
+
+		return pi_l_new, v_l_new
 
 	def run(self):
 		start_time = time.time()
@@ -162,10 +201,10 @@ class PPO:
 
 			# Save model
 			if epoch % self.save_freq == 0 or epoch == self.epochs - 1:
-				self.logger.save_state({'env':self.env}, None)
+				self.logger.save_state({'env': self.env}, None)
 
 			# Perform PPO update!
-			self.update()
+			pi_l_new, v_l_new = self.update()
 
 			# Log info about epoch
 			self.logger.log_tabular('Epoch', epoch)
@@ -184,7 +223,11 @@ class PPO:
 			self.logger.log_tabular('Time', time.time() - start_time)
 			self.logger.dump_tabular()
 
+			# Update summaries per epoch
+			summ = self.sess.run(self.summaries, feed_dict={self.pi_loss_ph: pi_l_new, self.v_loss_ph: v_l_new})
+			self.summ_writer.add_summary(summ, epoch)
+
+
 if __name__ == '__main__':
-	mpi_fork(1)
-	ppo = PPO(env_fn=simpleEnv, epochs=50, steps_per_epoch=100000)
+	ppo = PPO(env_fn=simpleEnv, epochs=50, steps_per_epoch=10000)
 	ppo.run()
