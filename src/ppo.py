@@ -15,6 +15,12 @@ from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
 
 from simple_env import simpleEnv
 
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots(1)
+s1_list = []
+plt.show(block=False)
+plt.ion()
+
 
 class PPO:
 	def __init__(self, env_fn, actor_critic=core.mlp_actor_critic, ac_kwargs=dict(), seed=0, steps_per_epoch=4000,
@@ -57,6 +63,7 @@ class PPO:
 		self.train_pi_iters = train_pi_iters
 		self.train_v_iters = train_v_iters
 		self.max_ep_len = max_ep_len
+
 		self.target_kl = target_kl
 		self.save_freq = save_freq
 		self.logger = EpochLogger(**logger_kwargs)
@@ -70,6 +77,7 @@ class PPO:
 
 		# Main outputs from computation graph
 		self.pi, self.logp, self.logp_pi, self.v = actor_critic(self.x_ph, self.a_ph, **ac_kwargs)
+		tf.keras.Sequential
 
 		# Need all placeholders in *this* order later (to zip it from buffer)
 		self.all_phs = [self.x_ph, self.a_ph, self.adv_ph, self.ret_ph, self.logp_old_ph]
@@ -117,7 +125,7 @@ class PPO:
 		self.summ_writer = tf.summary.FileWriter(self._setup_summary_dir(), self.sess.graph)
 
 		# Summary placeholders
-		with tf.name_scope('performance'):
+		with tf.name_scope('loss'):
 			self.pi_loss_ph = tf.placeholder(dtype=tf.float32, shape=None, name='pi_loss_summary')
 			self.v_loss_ph = tf.placeholder(dtype=tf.float32, shape=None, name='v_loss_summary')
 
@@ -228,6 +236,41 @@ class PPO:
 			self.summ_writer.add_summary(summ, epoch)
 
 
+			s0 = self.env.reset()
+			a0 = self.predict(s0)
+			s1, r, d, _ = self.env.step(a0)
+
+
+			self.logger.log(f'Randam initial state:  {s0}', 'magenta')
+			self.logger.log(f'Predicted action:      {a0}', 'magenta')
+			self.logger.log(f'Resulting state:       {s1}', 'magenta')
+
+			s1_list.append(s1)
+
+			ax.clear()
+			obs_dim = self.obs_dim[0]
+			ax.plot(range(obs_dim), np.ones(obs_dim), 'k', label="Reference")
+			for i, s in enumerate(s1_list):
+				if i < len(s1_list)-1:
+					ax.plot(range(obs_dim), s, '--')
+				else:
+					ax.plot(range(obs_dim), s, label=f"Epoch {epoch} prediction")
+
+
+
+			ax.legend(loc="upper right")
+			plt.pause(0.01)
+
+
+
+
+	def predict(self, o):
+		a, _, _ = self.sess.run(self.get_action_ops, feed_dict={self.x_ph: o.reshape(1, -1)})
+
+		# self.logger.log_tabular('Predicted Action', a)
+
+		return a[0]
+
 if __name__ == '__main__':
-	ppo = PPO(env_fn=simpleEnv, epochs=50, steps_per_epoch=10000)
+	ppo = PPO(env_fn=simpleEnv, epochs=1000, steps_per_epoch=1000)
 	ppo.run()

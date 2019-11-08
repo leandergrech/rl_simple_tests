@@ -83,7 +83,7 @@ class simpleEnv(gym.Env):
 		self.actions.append([])
 
 		self.done = False
-		init_state, init_reward = self._take_action(5 * np.random.randn(self.act_dimension))
+		init_state, init_reward = self._take_action(np.random.randn(self.act_dimension))
 		self.initial_conditions.append(init_state)
 
 		return init_state
