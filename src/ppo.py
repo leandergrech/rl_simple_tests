@@ -5,6 +5,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 import numpy as np
 import tensorflow as tf
 import time
+from datetime import datetime as dt
 import argparse
 
 import spinup.algos.ppo.core as core
@@ -15,11 +16,12 @@ from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
 
 from simple_env import simpleEnv
 
-import matplotlib.pyplot as plt
-fig, ax = plt.subplots(1)
-s1_list = []
-plt.show(block=False)
-plt.ion()
+
+# import matplotlib.pyplot as plt|
+# fig, ax = plt.subplots(1)
+# s1_list = []
+# plt.show(block=False)
+# plt.ion()
 
 
 class PPO:
@@ -77,7 +79,7 @@ class PPO:
 
 		# Main outputs from computation graph
 		self.pi, self.logp, self.logp_pi, self.v = actor_critic(self.x_ph, self.a_ph, **ac_kwargs)
-		tf.keras.Sequential
+		# tf.keras.Sequential
 
 		# Need all placeholders in *this* order later (to zip it from buffer)
 		self.all_phs = [self.x_ph, self.a_ph, self.adv_ph, self.ret_ph, self.logp_old_ph]
@@ -113,7 +115,10 @@ class PPO:
 		self.train_pi = tf.compat.v1.train.AdamOptimizer(learning_rate=pi_lr).minimize(self.pi_loss)
 		self.train_v = tf.compat.v1.train.AdamOptimizer(learning_rate=vf_lr).minimize(self.v_loss)
 
-		self.sess = tf.Session()
+		config = tf.compat.v1.ConfigProto()
+		config.intra_op_parallelism_threads = 8
+		config.inter_op_parallelism_threads = 8
+		self.sess = tf.Session(config=config)
 
 		# Initialize all the variables defined here
 		self.sess.run(tf.global_variables_initializer())
@@ -131,28 +136,23 @@ class PPO:
 
 			self.pi_loss_summary = tf.summary.scalar('pi_loss', self.pi_loss_ph)
 			self.v_loss_summary = tf.summary.scalar('v_loss', self.v_loss_ph)
-		self.summaries = tf.summary.merge([self.pi_loss_summary, self.v_loss_summary])
+
+		with tf.name_scope('performance'):
+			self.accuracy_ph = tf.placeholder(dtype=tf.float32, shape=None, name='accuracy_summary')
+
+			self.accuracy_summary = tf.summary.scalar('rms_error', self.accuracy_ph)
+
+		self.loss_summaries = tf.summary.merge([self.pi_loss_summary, self.v_loss_summary])
 
 	def _setup_summary_dir(self):
-		cwd = os.getcwd()
 		# TODO Check how many summaries exist with the same name and append a counter to the name
-		summary_dir = f"ppo-{self.epochs}epochs-{self.steps_per_epoch}steps"
+		summary_dir = f"ppo-{self.epochs}epochs-{self.steps_per_epoch}steps-{dt.now().strftime('%d%m%y%H%M%S')}"
 		summary_path = "summaries"
 
-		# os.chdir(os.path.pardir)
-		#
-		# if not os.path.exists(summary_path):
-		# 	try:
-		# 		os.makedirs(summary_path)
-		# 	except:
-		#
-		#
-		# os.chdir(summary_path)
-		# if not os.path.exists(summary_dir):
-		# 	os.mkdir(summary_dir)
-		#
-		# os.chdir(cwd)
-		return summary_dir
+		if not os.path.exists(summary_path):
+			os.makedirs(summary_path)
+
+		return os.path.join(summary_path, summary_dir)
 
 	def update(self):
 		inputs = {k: v for k, v in zip(self.all_phs, self.buf.get())}
@@ -163,7 +163,7 @@ class PPO:
 			_, kl = self.sess.run([self.train_pi, self.approx_kl], feed_dict=inputs)
 			# kl = mpi_avg(kl)
 			if kl > 1.5 * self.target_kl:
-				self.logger.log(f"Early stopping at step {i} fue to reaching max kl.")
+				self.logger.log(f"Early stopping at step {i} due to reaching max kl.", color='crimson')
 				break
 		self.logger.store(StopIter=i)
 		for _ in range(self.train_v_iters):
@@ -185,6 +185,7 @@ class PPO:
 		# Collect experience form env and update/log each epoch
 		for epoch in range(self.epochs):
 			for t in range(self.local_steps_per_epoch):
+				# print(f"run step {t}")
 				a, v_t, logp_t = self.sess.run(self.get_action_ops, feed_dict={self.x_ph: o.reshape(1, -1)})
 
 				# Save and log
@@ -198,7 +199,7 @@ class PPO:
 				terminal = (d or (ep_len == self.max_ep_len))
 				if terminal or (t == self.local_steps_per_epoch - 1):
 					if not terminal:
-						print(f"Warning, trajectory cut off by epoch at {ep_len} steps.")
+						self.logger.log(f"Warning, trajectory cut off by epoch at {ep_len} steps.", 'yellow')
 					# If trajectory did not reach terminal state, bootstrap value target
 					last_val = r if d else self.sess.run(self.v, feed_dict={self.x_ph: o.reshape(1, -1)})
 					self.buf.finish_path(last_val)
@@ -208,8 +209,9 @@ class PPO:
 					o, r, d, ep_ret, ep_len = self.env.reset(), 0, False, 0, 0
 
 			# Save model
-			if epoch % self.save_freq == 0 or epoch == self.epochs - 1:
-				self.logger.save_state({'env': self.env}, None)
+			# if epoch % self.save_freq == 0 or epoch == self.epochs - 1:
+			# if epoch == self.epochs - 1:
+			# 	self.logger.save_state({'env': self.env}, None)
 
 			# Perform PPO update!
 			pi_l_new, v_l_new = self.update()
@@ -232,37 +234,35 @@ class PPO:
 			self.logger.dump_tabular()
 
 			# Update summaries per epoch
-			summ = self.sess.run(self.summaries, feed_dict={self.pi_loss_ph: pi_l_new, self.v_loss_ph: v_l_new})
+			summ = self.sess.run(self.loss_summaries, feed_dict={self.pi_loss_ph: pi_l_new, self.v_loss_ph: v_l_new})
 			self.summ_writer.add_summary(summ, epoch)
-
 
 			s0 = self.env.reset()
 			a0 = self.predict(s0)
 			s1, r, d, _ = self.env.step(a0)
 
+			accuracy = np.sqrt(np.mean(np.power(np.ones(self.obs_dim[0]) - s1, 2)))
+
+			summ = self.sess.run(self.accuracy_summary, feed_dict={self.accuracy_ph: accuracy})
+			self.summ_writer.add_summary(summ, epoch)
 
 			self.logger.log(f'Randam initial state:  {s0}', 'magenta')
 			self.logger.log(f'Predicted action:      {a0}', 'magenta')
 			self.logger.log(f'Resulting state:       {s1}', 'magenta')
 
-			s1_list.append(s1)
+		# s1_list.append(s1)
 
-			ax.clear()
-			obs_dim = self.obs_dim[0]
-			ax.plot(range(obs_dim), np.ones(obs_dim), 'k', label="Reference")
-			for i, s in enumerate(s1_list):
-				if i < len(s1_list)-1:
-					ax.plot(range(obs_dim), s, '--')
-				else:
-					ax.plot(range(obs_dim), s, label=f"Epoch {epoch} prediction")
+		# ax.clear()
+		# obs_dim = self.obs_dim[0]
+		# ax.plot(range(obs_dim), np.ones(obs_dim), 'k', label="Reference")
+		# for i, s in enumerate(s1_list):
+		# 	if i < len(s1_list)-1:
+		# 		ax.plot(range(obs_dim), s, '--')
+		# 	else:
+		# 		ax.plot(range(obs_dim), s, label=f"Epoch {epoch} prediction")
 
-
-
-			ax.legend(loc="upper right")
-			plt.pause(0.01)
-
-
-
+		# ax.legend(loc="upper right")
+		# plt.pause(0.01)
 
 	def predict(self, o):
 		a, _, _ = self.sess.run(self.get_action_ops, feed_dict={self.x_ph: o.reshape(1, -1)})
@@ -271,6 +271,9 @@ class PPO:
 
 		return a[0]
 
+
 if __name__ == '__main__':
-	ppo = PPO(env_fn=simpleEnv, epochs=1000, steps_per_epoch=1000)
+	ppo = PPO(env_fn=simpleEnv, epochs=100, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (5,)})
 	ppo.run()
+
+	ppo.sess.close()
