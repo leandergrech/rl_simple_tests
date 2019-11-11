@@ -3,6 +3,7 @@ import logging
 import gym
 import numpy as np
 
+
 # from simple_env_graph import simpleEnvGraph
 
 
@@ -32,22 +33,30 @@ class simpleEnv(gym.Env):
 		self.counter = 0
 		self.seed(123)
 
-		self.a_dim_size = 50
-		A = np.diag(np.clip(np.random.normal(1.5, 0.2, self.a_dim_size), 1.0, 2.0))
+		rm_size = kwargs.get('rm_size', 5)
+		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
+		rm_element_std = kwargs.get('rm_element_std', 0.2)
+		rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
+		rm_element_clip_high = kwargs.get('rm_element_clip_high', 1.0)
+		A = np.diag(np.clip(np.random.normal(rm_element_mu, rm_element_std, rm_size), rm_element_clip_low,
+							rm_element_clip_high))
 
 		self.act_dimension = A.shape[0]
 		self.obs_dimension = A.shape[1]
+		self.response_matrix = A
 
 		self.MAX_POS = 1
 
-		self.action_space = gym.spaces.Box(low=-self.MAX_POS, high=self.MAX_POS, shape=(self.act_dimension,),
-		                                   dtype=np.float32)
+		action_pos_factor = 5
+		self.action_space = gym.spaces.Box(low=-action_pos_factor * self.MAX_POS, high=action_pos_factor * self.MAX_POS,
+										   shape=(self.act_dimension,), dtype=np.float32)
 
-		self.observation_space = gym.spaces.Box(low=-self.MAX_POS, high=self.MAX_POS, shape=(self.obs_dimension,),
-		                                        dtype=np.float32)
+		state_pos_factor = 1
+		self.observation_space = gym.spaces.Box(low=-state_pos_factor * self.MAX_POS,
+												high=state_pos_factor * self.MAX_POS, shape=(self.obs_dimension,),
+												dtype=np.float32)
 
 		self.reference_trajectory = np.ones(self.obs_dimension)
-		self.response_matrix = A
 
 	def seed(self, seed):
 		np.random.seed(seed)

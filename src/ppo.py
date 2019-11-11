@@ -242,7 +242,7 @@ class PPO:
 			s1, r, d, _ = self.env.step(a0)
 
 			accuracy = np.sqrt(np.mean(np.power(np.ones(self.obs_dim[0]) - s1, 2)))
-
+'
 			summ = self.sess.run(self.accuracy_summary, feed_dict={self.accuracy_ph: accuracy})
 			self.summ_writer.add_summary(summ, epoch)
 
@@ -273,7 +273,16 @@ class PPO:
 
 
 if __name__ == '__main__':
-	ppo = PPO(env_fn=simpleEnv, epochs=10000, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (60,)})
-	ppo.run()
+	try:
+		ppo = PPO(env_fn=simpleEnv, epochs=10000, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (60,)})
+		ppo.run()
+	except KeyboardInterrupt:
+		try:
+			os.makedirs('agents')
+		except FileExistsError:
+			pass
+		import pickle
+		pickle.dump(ppo, f"agents/PPO_{len(os.listdir('agents')) + 1}")
+
 
 	ppo.sess.close()
