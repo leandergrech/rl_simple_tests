@@ -32,7 +32,7 @@ class simpleEnv(gym.Env):
 		self.counter = 0
 		self.seed(123)
 
-		self.a_dim_size = 5
+		self.a_dim_size = 50
 		A = np.diag(np.clip(np.random.normal(1.5, 0.2, self.a_dim_size), 1.0, 2.0))
 
 		self.act_dimension = A.shape[0]

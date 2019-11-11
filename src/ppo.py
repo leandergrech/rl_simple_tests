@@ -273,7 +273,7 @@ class PPO:
 
 
 if __name__ == '__main__':
-	ppo = PPO(env_fn=simpleEnv, epochs=100, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (5,)})
+	ppo = PPO(env_fn=simpleEnv, epochs=10000, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (60,)})
 	ppo.run()
 
 	ppo.sess.close()
