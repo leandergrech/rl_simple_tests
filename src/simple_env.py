@@ -47,7 +47,7 @@ class simpleEnv(gym.Env):
 
 		self.MAX_POS = 1
 
-		action_pos_factor = 5
+		action_pos_factor = 1
 		self.action_space = gym.spaces.Box(low=-action_pos_factor * self.MAX_POS, high=action_pos_factor * self.MAX_POS,
 										   shape=(self.act_dimension,), dtype=np.float32)
 
