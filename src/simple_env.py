@@ -19,7 +19,7 @@ class simpleEnv(gym.Env):
 		self.visualization = None
 
 		self.done = False
-		self.MAX_TIME = 25
+		self.MAX_TIME = 50
 		self.curr_step = -1
 
 		self.curr_episode = -1
@@ -47,7 +47,7 @@ class simpleEnv(gym.Env):
 
 		self.MAX_POS = 1
 
-		action_pos_factor = 1
+		action_pos_factor = 2
 		self.action_space = gym.spaces.Box(low=-action_pos_factor * self.MAX_POS, high=action_pos_factor * self.MAX_POS,
 										   shape=(self.act_dimension,), dtype=np.float32)
 
@@ -61,7 +61,7 @@ class simpleEnv(gym.Env):
 	def seed(self, seed):
 		np.random.seed(seed)
 
-	def step(self, action):
+	def _stepThroughModel(self, action):
 		self.curr_step += 1
 		self.counter += 1
 		state, reward = self._take_action(action)
@@ -70,10 +70,14 @@ class simpleEnv(gym.Env):
 		self.rewards[self.curr_episode].append(reward)
 		self.states[self.curr_episode].append(state)
 		self.actions[self.curr_episode].append(action)
-		if reward < -10 or reward > -0.25 or self.curr_step > self.MAX_TIME:
+		if reward < -15 or reward > -0.2 or self.curr_step > self.MAX_TIME:
 			self.done = True
 
 		return state, reward, self.done, {}
+
+	def step(self, action):
+		return self._stepThroughModel(action)
+
 
 	def _take_action(self, action):
 		self.TOTAL_COUNTER += 1
