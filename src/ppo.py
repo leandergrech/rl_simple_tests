@@ -242,7 +242,7 @@ class PPO:
 			s1, r, d, _ = self.env.step(a0)
 
 			accuracy = np.sqrt(np.mean(np.power(np.ones(self.obs_dim[0]) - s1, 2)))
-'
+
 			summ = self.sess.run(self.accuracy_summary, feed_dict={self.accuracy_ph: accuracy})
 			self.summ_writer.add_summary(summ, epoch)
 

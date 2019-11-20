@@ -78,7 +78,6 @@ class simpleEnv(gym.Env):
 	def step(self, action):
 		return self._stepThroughModel(action)
 
-
 	def _take_action(self, action):
 		self.TOTAL_COUNTER += 1
 		next_state = np.dot(self.response_matrix, action)
@@ -111,6 +110,7 @@ class simpleEnv(gym.Env):
 class MORsimpleEnv(simpleEnv):
 	def __init__(self, **kwargs):
 		super(MORsimpleEnv, self).__init__(**kwargs)
+		
 		rm_size = kwargs.get('rm_size', 5)
 		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
 		rm_element_std = kwargs.get('rm_element_std', 0.2)
@@ -125,18 +125,8 @@ class MORsimpleEnv(simpleEnv):
 		n_evals = kwargs.get("n_evals", rm_size)
 
 
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
-	env = simpleEnv()
+	env = simpleEigenEnv(n_eigenvalues=4)
 
 	import matplotlib.pyplot as plt
 

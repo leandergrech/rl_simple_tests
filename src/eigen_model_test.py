@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
 from collections import defaultdict
 from tqdm import tqdm as progressbar
 
@@ -30,16 +30,24 @@ def pca():
 	print(df)
 	print(x)
 
-def svd_reduction(model, n_s):
+def svdReducedModel(model, n_s):
 	u, s, vh = np.linalg.svd(model)
 
-	s_reducted = s.copy()
+	s_truncated = s.copy()
 
-	s_reducted[n_s:] = 0.0
+	s_truncated[n_s:] = 0.0
 
-	return np.linalg.multi_dot([u, np.pad(np.diag(s_reducted), ((0, len(u)-len(s_reducted)),(0,0))), vh])
+	return np.linalg.multi_dot([u, np.pad(np.diag(s_truncated), ((0, len(u)-len(s_truncated)),(0,0))), vh])
 
-def eig_reduction(model, n_evals):
+def svdEigenModel(model, n_s):
+	u, s, vh = np.linalg.svd(model)
+
+	s_truncated = np.pad(np.diag(s[:n_s]), ((0, len(u)- n_s),(0,0)))
+
+	return np.linalg.multi_dot([u, s_truncated])
+
+
+def eigReduction(model, n_evals):
 	evals, evecs = np.linalg.eig(model)
 
 	assert n_evals <= model.shape[0]
@@ -54,7 +62,7 @@ def eig_reduction(model, n_evals):
 
 	return np.linalg.multi_dot([evecs, np.diag(evals_reducted), np.linalg.inv(evecs)])
 
-def eval_model_all_eigenvalues(model, N_STEPS, decomposition_callable = eig_reduction):
+def evalModelAllEigenvalues(model, N_STEPS, decomposition_callable = eigReduction):
 	INPUT_SIZE = model.shape[0]
 	MAX_EVALS = min(model.shape)
 
@@ -77,7 +85,7 @@ def eval_model_all_eigenvalues(model, N_STEPS, decomposition_callable = eig_redu
 
 	return rmse
 
-def eval_random_model_all_eigenvalues():
+def evalRandomModelAllEigenvalues():
 	SIZE = 10
 	N_MODELS = 100
 	N_STEPS = 500
@@ -90,7 +98,7 @@ def eval_random_model_all_eigenvalues():
 	for n_model in progressbar(range(N_MODELS)):
 		# a = np.random.normal(0.0, 1.0, (SIZE, SIZE))
 		a = np.diag(np.random.normal(0, 1, SIZE))
-		rmse.append(eval_model_all_eigenvalues(a, N_STEPS))
+		rmse.append(evalModelAllEigenvalues(a, N_STEPS))
 
 
 
@@ -113,35 +121,31 @@ def eval_random_model_all_eigenvalues():
 	plt.show()
 
 if __name__ == '__main__':
-	import os, sys
+	# import os, sys
+	#
+	# dirpath = os.path.dirname(os.path.realpath(__file__))
+	# sys.path.append(os.path.join(dirpath, "../../rl_ofc/src/gym-lhc/gym_lhc/envs"))
+	# from lhc_env import LHCData
+	#
+	# lhcData = LHCData()
+	# lhcData.loadDataFromOfsuFile()
 
-	dirpath = os.path.dirname(os.path.realpath(__file__))
-	sys.path.append(os.path.join(dirpath, "../../rl_ofc/src/gym-lhc/gym_lhc/envs"))
-	from lhc_env import LHCData
+	a = np.random.uniform(-1,1,(10,10))
+	u, s, vt = np.linalg.svd(a)
+	s= s[:5]
+	u = u[:5]
+	v = vt.T
+	v = v[:5]
+	vt = v.T
 
-	lhcData = LHCData()
-	lhcData.loadDataFromOfsuFile()
+	b = np.dot(u, s)
 
-	rm = lhcData.getRM()
+	input = np.random.uniform(-1,1,10)
 
-	# rm = np.random.normal(0,1,(50,50))
-
-	rmse = eval_model_all_eigenvalues(rm, 5, svd_reduction)
-	stats = [rmse[n_evals] for n_evals in rmse]
-
-	print(stats)
-	mean = np.mean(stats, axis=1)
-	print(mean)
-	std = np.std(stats, axis=1)
-	print(std)
- 
 	fig, ax = plt.subplots()
-	x = np.linspace(min(rm.shape), 1, len(mean))
-	ax.plot(x, mean)
-	ax.fill_between(x, mean-std, mean+std, facecolor='#a9cce3')
-	ax.set_xlabel("# Eigenvalues used")
-	ax.set_ylabel("RMSE to original model")
-	plt.show()
+	
+	fo
+
 
 
 
