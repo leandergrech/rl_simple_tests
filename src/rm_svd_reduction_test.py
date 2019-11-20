@@ -6,18 +6,18 @@ sys.path.append(os.path.join(dirname, "../../rl_ofc/src/gym-lhc/gym_lhc/envs"))
 import numpy as np
 import matplotlib.pyplot as plt
 
-from lhc_env import LHCData
+# from lhc_env import LHCData
 
 if __name__ == '__main__':
 	STEPS = 1000
 
-	lhcData = LHCData()
-	lhcData.loadDataFromOfsuFile()
-	rm = lhcData.getRM()
+	# lhcData = LHCData()
+	# lhcData.loadDataFromOfsuFile()
+	# rm = lhcData.getRM()
+
+	rm = np.diag(np.random.uniform(-1,1,100))
 
 	U, Sigma, Vt = np.linalg.svd(rm)
-
-	n_evals = 1
 
 	fig, ax = plt.subplots()
 	fig.suptitle("Response Matrix - Model Order Reduction - SVD")
@@ -30,14 +30,15 @@ if __name__ == '__main__':
 	accuracy = []
 	accuracy_std = []
 	n_evals_list = []
-	for n_evals in np.arange(550, 99, -1):
+	for n_evals in np.arange(rm.shape[1], int(rm.shape[1]/100), -1):
 		n_evals_list.append(n_evals)
 
-		U_trunc = U[:, :n_evals]
-		Sigma_trunc = Sigma[:n_evals]
-		V = Vt.T
-		V_trunc = V[:, :n_evals]
-		Vt_trunc = V_trunc.T
+		U_trunc, Sigma_trunc, Vt_trunc  = U, Sigma, Vt
+
+		Sigma_trunc = Sigma_trunc[:n_evals]
+		U_trunc = U_trunc[:, :n_evals]
+		Vt_trunc = Vt[:n_evals]
+
 
 		S = np.diag(Sigma_trunc)
 
@@ -48,11 +49,15 @@ if __name__ == '__main__':
 		rmse_temp = []
 		accuracy_temp = []
 		for _ in range(STEPS):
-			input_vector = np.random.uniform(-1, 1, rm.shape[0])
 
-			from_rm = np.linalg.multi_dot([input_vector, rm])
-			temp = input_vector.dot(B)
-			from_reduced_rm = temp.dot(Vt_trunc)
+			input_vector = np.random.uniform(-1, 1, rm.shape[1])
+
+			from_rm = np.dot(rm, input_vector)
+			temp=np.dot(input_vector, B)
+			from_reduced_rm=np.dot(temp, Vt_trunc)
+			# from_rm = np.linalg.multi_dot([input_vector, rm])
+			# temp = input_vector.dot(B)
+			# from_reduced_rm = temp.dot(Vt_trunc)
 
 			rmse_temp.append(np.sqrt(np.mean(np.power(np.subtract(from_rm, from_reduced_rm), 2))))
 

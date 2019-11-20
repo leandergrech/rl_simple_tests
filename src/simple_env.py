@@ -108,6 +108,32 @@ class simpleEnv(gym.Env):
 
 		self.visualization.render(self.curr_step, self.rewards[-1][-1], self.states[-1][-1], self.actions[-1][-1])
 
+class MORsimpleEnv(simpleEnv):
+	def __init__(self, **kwargs):
+		super(MORsimpleEnv, self).__init__(**kwargs)
+		rm_size = kwargs.get('rm_size', 5)
+		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
+		rm_element_std = kwargs.get('rm_element_std', 0.2)
+		rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
+		rm_element_clip_high = kwargs.get('rm_element_clip_high', 1.0)
+
+		A = np.diag(np.clip(np.random.normal(rm_element_mu, rm_element_std, rm_size), rm_element_clip_low,
+							rm_element_clip_high))
+
+		U,S,Vt = np.linalg.svd(A)
+
+		n_evals = kwargs.get("n_evals", rm_size)
+
+
+
+
+
+
+
+
+
+
+
 
 if __name__ == '__main__':
 	env = simpleEnv()
