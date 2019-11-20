@@ -6,16 +6,16 @@ sys.path.append(os.path.join(dirname, "../../rl_ofc/src/gym-lhc/gym_lhc/envs"))
 import numpy as np
 import matplotlib.pyplot as plt
 
-# from lhc_env import LHCData
+from lhc_env import LHCData
 
 if __name__ == '__main__':
 	STEPS = 1000
 
-	# lhcData = LHCData()
-	# lhcData.loadDataFromOfsuFile()
-	# rm = lhcData.getRM()
+	lhcData = LHCData()
+	lhcData.loadDataFromOfsuFile()
+	rm = lhcData.getRM()
 
-	rm = np.diag(np.random.uniform(-1,1,100))
+	# rm = np.diag(np.random.uniform(-1,1,100))
 
 	U, Sigma, Vt = np.linalg.svd(rm)
 
