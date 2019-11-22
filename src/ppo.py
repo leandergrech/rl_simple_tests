@@ -14,15 +14,7 @@ from spinup.utils.logx import EpochLogger
 from spinup.utils.mpi_tools import num_procs, mpi_avg, mpi_fork
 from spinup.utils.mpi_tf import MpiAdamOptimizer, sync_all_params
 
-from simple_env import simpleEnv
-
-
-# import matplotlib.pyplot as plt|
-# fig, ax = plt.subplots(1)
-# s1_list = []
-# plt.show(block=False)
-# plt.ion()
-
+from simple_env import MORsimpleEnv
 
 class PPO:
 	def __init__(self, env_fn, actor_critic=core.mlp_actor_critic, ac_kwargs=dict(), seed=0, steps_per_epoch=4000,
@@ -240,15 +232,16 @@ class PPO:
 			s0 = self.env.reset()
 			a0 = self.predict(s0)
 			s1, r, d, _ = self.env.step(a0)
+			s1_model, r_model = self.env.testActualModel(a0)
 
 			accuracy = np.sqrt(np.mean(np.power(np.ones(self.obs_dim[0]) - s1, 2)))
 
 			summ = self.sess.run(self.accuracy_summary, feed_dict={self.accuracy_ph: accuracy})
 			self.summ_writer.add_summary(summ, epoch)
 
-			self.logger.log(f'Randam initial state:  {s0}', 'magenta')
-			self.logger.log(f'Predicted action:      {a0}', 'magenta')
+			self.logger.log(f'Randam initial state:  reward = {r}, {s0}', 'magenta')
 			self.logger.log(f'Resulting state:       {s1}', 'magenta')
+			self.logger.log(f'Resulting state through actual model:  reward = {r_model}, {s1_model}', 'gray')
 
 		# s1_list.append(s1)
 
@@ -274,7 +267,7 @@ class PPO:
 
 if __name__ == '__main__':
 	try:
-		ppo = PPO(env_fn=simpleEnv, epochs=10000, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (60,)})
+		ppo = PPO(env_fn=MORsimpleEnv, epochs=100, steps_per_epoch=10000, ac_kwargs={'hidden_sizes': (10,5)}, logger_kwargs={'output_dir':'TestingSVDMOR', 'exp_name':'PPO-0'})
 		ppo.run()
 	except KeyboardInterrupt:
 		try:
