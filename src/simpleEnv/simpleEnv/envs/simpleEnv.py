@@ -154,9 +154,13 @@ class simpleEnv(gym.Env):
 
 		self.done = False
 
-		init_state, init_reward = self._take_action(self.action_space.sample())
+		init_action = self.action_space.sample()
+		init_state, init_reward = self._take_action(init_action)
 		self.initial_conditions.add_episode()
 		self.initial_conditions.push_stat(init_state)
+
+		self.current_state = init_state
+		self.last_action = init_action
 
 		return init_state
 
@@ -164,13 +168,25 @@ class simpleEnv(gym.Env):
 		if self.fig is None:
 			self.fig, ax = plt.subplots(3)
 			plt.show(block=False)
+
+			ax[0].plot([0],[0], label="Rewards")
+			ax[0].legend(loc='upper left')
+			ax[0].set_ylim((-10,1))
+
+			ax[1].plot(self.reference_trajectory, color='k', label= 'Reference Trajectory')
+			ax[1].plot(self.current_state, color='b', label="Current state")
+			ax[1].set_ylim((-10,10))
+			ax[1].legend(loc="upper right")
+
+			ax[2].plot(self.last_action, color ='r', label='Last action')
+			ax[2].set_ylim((self.action_space.low[0], self.action_space.high[0]))
+			ax[2].legend(loc="upper right")
+
+
 		axes = self.fig.axes
 		ax_rewards = axes[0]
 		ax_state = axes[1]
 		ax_action = axes[2]
-
-		for ax in axes:
-			ax.clear()
 
 		if rewards:
 			max_x = len(rewards)
@@ -179,17 +195,13 @@ class simpleEnv(gym.Env):
 			else:
 				x_list = np.arange(max_x - 50, max_x)
 			rewards = rewards[-50:]
-			ax_rewards.plot(x_list, rewards, label="Rewards")
+			ax_rewards.get_lines()[0].set_data(x_list, rewards)
+			# ax_rewards.plot(x_list, rewards, label="Rewards")
 
-
-		ax_state.plot(self.reference_trajectory, color='k', label= 'Reference Trajectory')
-		ax_state.plot(self.current_state, color='b', label="Current state")
-		ax_state.set_ylim((-10,10))
-		ax_state.legend(loc="upper right")
-
-		ax_action.plot(self.last_action, color ='r', label='Last action')
-		ax_action.set_ylim((self.action_space.low[0], self.action_space.high[0]))
-		ax_action.legend(loc="upper right")
+		state_lines = ax_state.get_lines()
+		state_lines[0].set_ydata(self.reference_trajectory)
+		state_lines[1].set_ydata(self.current_state)
+		ax_action.get_lines()[0].set_ydata(self.last_action)
 
 		plt.draw()
 		plt.pause(0.05)

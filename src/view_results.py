@@ -1,12 +1,26 @@
-import os, sys
+import gym
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(dir_path, "../spinup"))\
+from stable_baselines.common.vec_env import DummyVecEnv
+from stable_baselines import PPO2
 
-from spinup.utils.logx import restore_tf_graph
-import tensorflow as tf
+import numpy as np
 
-if __name__ == '__main__':
-	sess = tf.Session()
+env = gym.make('simpleEnv:simpleEnv-v0')
+vec_env = DummyVecEnv([lambda: env])
 
-	print(restore_tf_graph(sess, os.path.join(dir_path, "vpg_output_dir/simple_save")))
+model =PPO2.load('simpleEnv-full5x5', vec_env, verbose=0, tensorboard_log='learning-ppo')
+
+obs = env.reset()
+rewards = []
+for i in range(1000):
+	env.render(rewards=rewards)
+
+	if i == 20:
+		env.reference_trajectory = np.random.normal(1,1, env.obs_dimension)
+
+	action, _ = model.predict(obs)
+	s, r, _,_ = env.step(action)
+	rewards.append(r)
+
+	if r < -0.1:
+		model.learn(1000)
