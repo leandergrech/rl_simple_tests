@@ -76,7 +76,7 @@ class simpleEnv(gym.Env):
 		'''
 		def create_response_matrix():
 			nonlocal kwargs
-			rm_size = kwargs.get('rm_size', 5)
+			rm_size = kwargs.get('rm_size', 550)
 			rm_element_mu = kwargs.get('rm_element_mu', 1.5)
 			rm_element_std = kwargs.get('rm_element_std', 0.2)
 			rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
@@ -196,7 +196,7 @@ class simpleEnv(gym.Env):
 				x_list = np.arange(max_x - 50, max_x)
 			rewards = rewards[-50:]
 			ax_rewards.get_lines()[0].set_data(x_list, rewards)
-			# ax_rewards.plot(x_list, rewards, label="Rewards")
+			ax_rewards.set_xlim((min(x_list), max(x_list)))
 
 		state_lines = ax_state.get_lines()
 		state_lines[0].set_ydata(self.reference_trajectory)

@@ -21,6 +21,3 @@ for i in range(1000):
 	action, _ = model.predict(obs)
 	s, r, _,_ = env.step(action)
 	rewards.append(r)
-
-	if r < -0.1:
-		model.learn(1000)
