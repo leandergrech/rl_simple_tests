@@ -15,7 +15,7 @@ if __name__ == '__main__':
 	env = gym.make('simpleEnv:simpleEnv-v0')
 	env = DummyVecEnv([lambda: env])
 
-	model = PPO2(MlpPolicy, env, verbose=1)
+	model = PPO2(MlpPolicy, env, tensorboard_log='log', verbose=1)
 	model.learn(total_timesteps=int(args.total_timesteps))
 
 	model.save('simpleEnv-full5x5')
