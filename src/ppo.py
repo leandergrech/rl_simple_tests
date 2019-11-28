@@ -18,5 +18,5 @@ if __name__ == '__main__':
 	model = PPO2(MlpPolicy, env, tensorboard_log='log', verbose=1)
 	model.learn(total_timesteps=int(args.total_timesteps))
 
-	model.save('simpleEnv-full5x5')
+	model.save('simpleEnv-full550x550')
 

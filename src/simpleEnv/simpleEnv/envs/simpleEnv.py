@@ -71,52 +71,56 @@ class simpleEnv(gym.Env):
 
 		self.fig = None
 
+		self.act_dimension = None
+		self.obs_dimension = None
+		self.response_matrix = None
+
+		self.action_space = None
+		self.observation_space = None
+
+
 		'''
 		Obtaining a randomised response matrix
 		'''
-		def create_response_matrix():
-			nonlocal kwargs
-			rm_size = kwargs.get('rm_size', 550)
-			rm_element_mu = kwargs.get('rm_element_mu', 1.5)
-			rm_element_std = kwargs.get('rm_element_std', 0.2)
-			rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
-			rm_element_clip_high = kwargs.get('rm_element_clip_high', 2.0)
-			A = np.clip(np.random.normal(rm_element_mu, rm_element_std, (rm_size, rm_size)), rm_element_clip_low,
-			                    rm_element_clip_high)
-			np.save(simpleEnv.rm_loc, A)
-
-			return A
-
 		rm_use_last = kwargs.get('rm_use_last', True)
 		if rm_use_last:
 			try:
-				A = np.load(simpleEnv.rm_loc)
+				self.setupResponseMatrix(kwargs=kwargs, A_loaded=np.load(simpleEnv.rm_loc))
 			except FileNotFoundError:
 				print("############################################################")
 				print("#    No response matrix found. Creating new one instead    #")
 				print("############################################################")
-				A = create_response_matrix()
+				self.setupResponseMatrix(kwargs=kwargs)
 		else:
-			A = create_response_matrix()
+			self.setupResponseMatrix(kwargs=kwargs)
 
 
 
-		'''
-		Action and observations Spaces
-		'''
+	def setupResponseMatrix(self, kwargs, A_loaded = None):
+		rm_size = kwargs.get('rm_size', 550)
+		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
+		rm_element_std = kwargs.get('rm_element_std', 0.2)
+		rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
+		rm_element_clip_high = kwargs.get('rm_element_clip_high', 2.0)
+
+		if A_loaded is not None:
+			A = A_loaded
+		else:
+			A = np.clip(np.random.normal(rm_element_mu, rm_element_std, (rm_size, rm_size)), rm_element_clip_low,
+					rm_element_clip_high)
+			np.save(simpleEnv.rm_loc, A)
+
 		self.act_dimension = A.shape[0]
 		self.obs_dimension = A.shape[1]
 		self.response_matrix = A
 
-		min_action = -10.0
-		max_action = 10.0
+		min_action, max_action= -10.0, 10.0
 		self.action_space = gym.spaces.Box(low=min_action, high=max_action, shape=(self.act_dimension,),
-		                                   dtype=np.float32)
+										   dtype=np.float32)
 
-		min_state = -1.0
-		max_state = 1.0
+		min_state, max_state = -500.0, 500.0
 		self.observation_space = gym.spaces.Box(low=min_state, high=max_state, shape=(self.obs_dimension,),
-		                                        dtype=np.float32)
+												dtype=np.float32)
 
 		self.reference_trajectory = np.ones(self.obs_dimension)
 
@@ -175,7 +179,7 @@ class simpleEnv(gym.Env):
 
 			ax[1].plot(self.reference_trajectory, color='k', label= 'Reference Trajectory')
 			ax[1].plot(self.current_state, color='b', label="Current state")
-			ax[1].set_ylim((-10,10))
+			ax[1].set_ylim((self.observation_space.low[0],self.observation_space.high[0]))
 			ax[1].legend(loc="upper right")
 
 			ax[2].plot(self.last_action, color ='r', label='Last action')
@@ -268,11 +272,15 @@ class MORsimpleEnv(simpleEnv):
 if __name__ == '__main__':
 	env=simpleEnv()
 
-	for _ in range(np.random.choice(100)):
+	rewards = []
+	for _ in range(1000):
 		env.reset()
-		for _ in range(np.random.choice(10)):
-			env.step(np.random.uniform(-1,1,5))
-			env.render()
+		for _ in range(np.random.choice(1000)):
+			_, r, _, _ = env.step(env.action_space.sample())
+			rewards.append(r)
+			env.render(rewards)
+
+		print(f"resetting")
 
 	# env.initial_conditions.Print()
 	# env.states.Print()
