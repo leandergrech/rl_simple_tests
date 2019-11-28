@@ -13,7 +13,9 @@ if __name__ == '__main__':
 	args = parser.parse_args()
 
 	env = gym.make('simpleEnv:simpleEnv-v0')
-	print(f"Starting training on env having shape = {env.shape}")
+	print('\n\n')
+	print(f"Starting training on env having shape = {env.response_matrix.shape}")
+	print('\n\n')
 
 	env = DummyVecEnv([lambda: env])
 	model = PPO2(MlpPolicy, env, tensorboard_log='log', verbose=1)
