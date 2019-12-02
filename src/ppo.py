@@ -2,10 +2,11 @@ import gym
 
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common.vec_env import DummyVecEnv
-from stable_baselines import PPO2
+from stable_baselines import *
 
 import argparse
 from time import sleep
+from functools import partial
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
@@ -18,7 +19,13 @@ if __name__ == '__main__':
 	print('\n\n')
 
 	env = DummyVecEnv([lambda: env])
-	model = PPO2(MlpPolicy, env, tensorboard_log='log', verbose=1)
+
+	layers = [600, 600]
+	net_arch = [dict(vf=layers, pi=layers)]
+	# myMlpPolicy = partial(MlpPolicy, net_arch=net_arch)
+
+
+	model = PPO2(MlpPolicy, env, policy_kwargs={"net_arch":net_arch}, tensorboard_log='log', verbose=1)
 
 	sleep(1)
 

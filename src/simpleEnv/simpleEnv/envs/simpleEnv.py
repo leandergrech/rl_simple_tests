@@ -97,7 +97,7 @@ class simpleEnv(gym.Env):
 
 
 	def setupResponseMatrix(self, kwargs, A_loaded = None):
-		rm_size = kwargs.get('rm_size', 550)
+		rm_size = kwargs.get('rm_size', 5)
 		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
 		rm_element_std = kwargs.get('rm_element_std', 0.2)
 		rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
