@@ -125,8 +125,8 @@ class simpleEnv(gym.Env):
 	@response_matrix.setter
 	def response_matrix(self, rm):
 		self._response_matrix = rm
-		self.act_dimension = rm.shape[0]
-		self.obs_dimension = rm.shape[1]
+		self.act_dimension = rm.shape[1]
+		self.obs_dimension = rm.shape[0]
 
 		min_action, max_action= -10.0, 10.0
 		self.action_space = gym.spaces.Box(low=min_action, high=max_action, shape=(self.act_dimension,),
@@ -226,55 +226,59 @@ class simpleEnv(gym.Env):
 
 
 class MORsimpleEnv(simpleEnv):
+	"""
+		Normal matrix decomposition by Singular Value Decomposition (SVD)
+
+		|-------|       |---------------|       |-------|
+		|       |       |               |       | *     |
+		|       |       |               |       |   *   |       |-------|
+		|       |       |               |       |     * |       |       |
+		|   A   |   =   |       U       |   x   |   S   |   x   |  V^T  |
+		|       |       |               |       |       |       |       |
+		|       |       |               |       |       |       |-------|
+		|       |       |               |       |       |
+		|-------|       |---------------|       |-------|
+
+		   mxn                 mxm                 mxn             nxn
+
+		Reduced matrix by truncating the S matrix
+
+		|-------|       |----|
+		|       |       |    |
+		|       |       |    |       |-------|       |-------|
+		|   ~   |       |  ~ |       |   ~   |       |  V^T  |
+		|   A   |   =   |  U |   x   |   S   |   x   |-------|
+		|       |       |    |       |-------|
+		|       |       |    |
+		|       |       |    |
+		|-------|       |----|
+
+		   mxn           mxr            rxr             rxn
+
+	"""
 	def __init__(self, **kwargs):
 		super(MORsimpleEnv, self).__init__(**kwargs)
 
-		rm_output_size = kwargs.get('rm_output_size', 4)
-		rm_input_size = kwargs.get('rm_input_size', 5)
-		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
-		rm_element_std = kwargs.get('rm_element_std', 0.2)
-		rm_element_clip_low = kwargs.get('rm_element_clip_low', -1.0)
-		rm_element_clip_high = kwargs.get('rm_element_clip_high', 1.0)
+		n_evals = self.rm_kwargs.get("n_evals", 4)  # Number of eigen values
 
-		# A = np.pad(np.diag(np.clip(np.random.normal(rm_element_mu, rm_element_std, rm_output_size), rm_element_clip_low,
-		# 						   rm_element_clip_high)), ((0, rm_input_size - rm_output_size), (0, 0)))
-
-		A = np.random.uniform(rm_element_clip_low, rm_element_clip_high, (rm_input_size, rm_output_size))
-
-		n_evals = kwargs.get("n_evals", 4)  # Number of eigen values
-
-		U, Sigma, Vt = np.linalg.svd(A)
+		U, Sigma, Vt = np.linalg.svd(self.response_matrix)
 		Sigma_trunc = Sigma[:n_evals]
 
-		S_trunc = np.diag(Sigma_trunc)
-		U_trunc = U[:, :n_evals]
-		Vt_trunc = Vt[:n_evals]
+		U_trunc = U[:, :n_evals]        # mxr
+		S_trunc = np.diag(Sigma_trunc)  # rxr
+		Vt_trunc = Vt[:n_evals]         # rxn
 
-		B = np.dot(U_trunc, S_trunc)
-		A_tilde = np.dot(B, Vt_trunc)
+		B = np.dot(U_trunc, S_trunc)    # mxr
+		A_tilde = np.dot(B, Vt_trunc)   # mxn
 
-		self.act_dimension = B.shape[1]
-		self.obs_dimension = B.shape[0]
-		self.response_matrix = B
-		self.response_matrix_reduced = A_tilde
-		self.response_matrix_full = A
-		self.decoder = Vt_trunc
+		self.response_matrix = B        # mxr
+		self.action_decoder = Vt_trunc     # rxn
 
-		self.MAX_POS = 1
+		self.reduced_response_matrix = np.dot(B, Vt_trunc)
 
-		action_pos_factor = 2
-		self.action_space = gym.spaces.Box(low=-action_pos_factor * self.MAX_POS, high=action_pos_factor * self.MAX_POS,
-		                                   shape=(self.act_dimension,), dtype=np.float32)
+	def actionFromFeature(self, z):
+		return np.dot(z, self.action_decoder)
 
-		state_pos_factor = 1
-		self.observation_space = gym.spaces.Box(low=-state_pos_factor * self.MAX_POS,
-		                                        high=state_pos_factor * self.MAX_POS, shape=(self.obs_dimension,),
-		                                        dtype=np.float32)
-
-		self.reference_trajectory = np.ones(self.obs_dimension)
-
-	def _objective(self, temp):
-		return -np.sqrt(np.mean(np.power(np.subtract(self.reference_trajectory, temp), 2)))
 
 	def testActualModel(self, action):
 		actual_action_vector = np.dot(action, self.decoder)
