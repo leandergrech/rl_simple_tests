@@ -4,6 +4,18 @@ import numpy as np
 from collections import defaultdict
 from warnings import warn
 
+from functools import partial
+
+
+def printWithBorder(string):
+	string = f"#   {string}   #"
+	hashline = partial(print, *('#' for _ in string), sep='')
+
+	hashline()
+	print(string)
+	hashline()
+
+
 
 class epochStats:
 	def __init__(self, name):
@@ -53,6 +65,13 @@ class simpleEnv(gym.Env):
 		'''
 		Initialising parameters
 		'''
+
+		self.rm_kwargs = kwargs.get("rm_kwargs", dict(rm_size=5,
+													  rm_element_mu=1.5,
+													  rm_element_std=0.2,
+													  rm_element_clip_low=1.0,
+													  rm_element_clip_high=2.0))
+
 		self.current_state = None
 		self.last_action = None
 
@@ -73,52 +92,47 @@ class simpleEnv(gym.Env):
 
 		self.act_dimension = None
 		self.obs_dimension = None
-		self.response_matrix = None
+		self._response_matrix = None
+		self.reference_trajectory = None
 
 		self.action_space = None
 		self.observation_space = None
 
-
 		'''
 		Obtaining a randomised response matrix
 		'''
-		rm_use_last = kwargs.get('rm_use_last', True)
-		if rm_use_last:
+		if kwargs.get('rm_use_last', True):
 			try:
-				self.setupResponseMatrix(kwargs=kwargs, A_loaded=np.load(simpleEnv.rm_loc))
+				self.response_matrix = np.load(simpleEnv.rm_loc)
+				printWithBorder("Loaded response matrix from file")
 			except FileNotFoundError:
-				print("############################################################")
-				print("#    No response matrix found. Creating new one instead    #")
-				print("############################################################")
-				self.setupResponseMatrix(kwargs=kwargs)
+				printWithBorder("No response matrix found")
+
 		else:
-			self.setupResponseMatrix(kwargs=kwargs)
-
-
-
-	def setupResponseMatrix(self, kwargs, A_loaded = None):
-		rm_size = kwargs.get('rm_size', 5)
-		rm_element_mu = kwargs.get('rm_element_mu', 1.5)
-		rm_element_std = kwargs.get('rm_element_std', 0.2)
-		rm_element_clip_low = kwargs.get('rm_element_clip_low', 1.0)
-		rm_element_clip_high = kwargs.get('rm_element_clip_high', 2.0)
-
-		if A_loaded is not None:
-			A = A_loaded
-		else:
-			A = np.clip(np.random.normal(rm_element_mu, rm_element_std, (rm_size, rm_size)), rm_element_clip_low,
-					rm_element_clip_high)
+			printWithBorder("Created random response matrix")
+			A = self._random_rm()
 			np.save(simpleEnv.rm_loc, A)
+			self.response_matrix = A
 
-		self.act_dimension = A.shape[0]
-		self.obs_dimension = A.shape[1]
-		self.response_matrix = A
+	def _random_rm(self):
+		sz, mu, std, lo, hi = self.rm_kwargs.values()
+		return np.clip(np.random.normal(mu, std, (sz, sz)), lo, hi)
+
+	@property
+	def response_matrix(self):
+		return self._response_matrix
+
+	@response_matrix.setter
+	def response_matrix(self, rm):
+		self._response_matrix = rm
+		self.act_dimension = rm.shape[0]
+		self.obs_dimension = rm.shape[1]
 
 		min_action, max_action= -10.0, 10.0
 		self.action_space = gym.spaces.Box(low=min_action, high=max_action, shape=(self.act_dimension,),
 										   dtype=np.float32)
 
-		min_state, max_state = -500.0, 500.0
+		min_state, max_state = 10.0, 10.0
 		self.observation_space = gym.spaces.Box(low=min_state, high=max_state, shape=(self.obs_dimension,),
 												dtype=np.float32)
 
