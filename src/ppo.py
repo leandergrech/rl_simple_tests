@@ -20,12 +20,13 @@ if __name__ == '__main__':
 
 	env = DummyVecEnv([lambda: env])
 
-	layers = [600, 600]
+	layers = [350, 350]
 	net_arch = [dict(vf=layers, pi=layers)]
 	# myMlpPolicy = partial(MlpPolicy, net_arch=net_arch)
 
 
-	model = PPO2(MlpPolicy, env, policy_kwargs={"net_arch":net_arch}, tensorboard_log='log', verbose=1)
+	# model = PPO2(MlpPolicy, env, policy_kwargs={"net_arch":net_arch}, gamma=0.99, n_steps=500, tensorboard_log='log', verbose=1)
+	model = SAC('MlpPolicy', env, tensorboard_log='log', verbose=1)
 
 	sleep(1)
 
@@ -35,5 +36,5 @@ if __name__ == '__main__':
 		pass
 
 
-	model.save('simpleEnv-full550x550')
+	model.save('simpleEnv-full550x550-mlp600x600')
 

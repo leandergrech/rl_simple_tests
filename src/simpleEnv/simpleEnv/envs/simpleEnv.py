@@ -16,7 +16,6 @@ def printWithBorder(string):
 	hashline()
 
 
-
 class epochStats:
 	def __init__(self, name):
 		self.name = name
@@ -43,7 +42,6 @@ class epochStats:
 		self.push_stat(stat)
 		self.add_episode()
 
-
 	def Print(self):
 		if self.__current_ep == -1:
 			print(f"No stats in '{self.name}' epochStats instance")
@@ -56,21 +54,28 @@ class epochStats:
 				print(f"{item},", end='\t')
 			print()
 
+
 import matplotlib.pyplot as plt
+
 plt.ion()
+
 
 class simpleEnv(gym.Env):
 	rm_loc = 'simpleEnv_response_matrix.npy'
+
 	def __init__(self, **kwargs):
 		'''
 		Initialising parameters
 		'''
 
-		self.rm_kwargs = kwargs.get("rm_kwargs", dict(rm_size=5,
-													  rm_element_mu=1.5,
-													  rm_element_std=0.2,
-													  rm_element_clip_low=1.0,
-													  rm_element_clip_high=2.0))
+		self.rm_kwargs = kwargs.get("rm_kwargs", {})
+		for k, v in dict(rm_size=5,
+						 rm_element_mu=1.5,
+						 rm_element_std=0.2,
+						 rm_element_clip_low=1.0,
+						 rm_element_clip_high=2.0).items():
+			if k not in self.rm_kwargs:
+				self.rm_kwargs[k] = v
 
 		self.current_state = None
 		self.last_action = None
@@ -84,7 +89,6 @@ class simpleEnv(gym.Env):
 		self.states = epochStats(name="states")
 		self.actions = epochStats(name="actions")
 		self.initial_conditions = epochStats(name="initial_conditions")
-
 
 		self.reward_threshold = kwargs.get('reward_threshold', -0.2)
 
@@ -115,7 +119,9 @@ class simpleEnv(gym.Env):
 			self.response_matrix = A
 
 	def _random_rm(self):
-		sz, mu, std, lo, hi = self.rm_kwargs.values()
+		kw = self.rm_kwargs
+		sz, mu, std, lo, hi = kw['rm_size'], kw['rm_element_mu'], kw['rm_element_std'], kw['rm_element_clip_low'], kw['rm_element_clip_high']
+
 		return np.clip(np.random.normal(mu, std, (sz, sz)), lo, hi)
 
 	@property
@@ -128,7 +134,7 @@ class simpleEnv(gym.Env):
 		self.act_dimension = rm.shape[1]
 		self.obs_dimension = rm.shape[0]
 
-		min_action, max_action= -10.0, 10.0
+		min_action, max_action = -10.0, 10.0
 		self.action_space = gym.spaces.Box(low=min_action, high=max_action, shape=(self.act_dimension,),
 										   dtype=np.float32)
 
@@ -187,19 +193,18 @@ class simpleEnv(gym.Env):
 			self.fig, ax = plt.subplots(3)
 			plt.show(block=False)
 
-			ax[0].plot([0],[0], label="Rewards")
+			ax[0].plot([0], [0], label="Rewards")
 			ax[0].legend(loc='upper left')
-			ax[0].set_ylim((-10,1))
+			ax[0].set_ylim((-10, 1))
 
-			ax[1].plot(self.reference_trajectory, color='k', label= 'Reference Trajectory')
+			ax[1].plot(self.reference_trajectory, color='k', label='Reference Trajectory')
 			ax[1].plot(self.current_state, color='b', label="Current state")
-			ax[1].set_ylim((self.observation_space.low[0],self.observation_space.high[0]))
+			ax[1].set_ylim((self.observation_space.low[0], self.observation_space.high[0]))
 			ax[1].legend(loc="upper right")
 
-			ax[2].plot(self.last_action, color ='r', label='Last action')
+			ax[2].plot(self.last_action, color='r', label='Last action')
 			ax[2].set_ylim((self.action_space.low[0], self.action_space.high[0]))
 			ax[2].legend(loc="upper right")
-
 
 		axes = self.fig.axes
 		ax_rewards = axes[0]
@@ -246,9 +251,9 @@ class MORsimpleEnv(simpleEnv):
 		|-------|       |----|
 		|       |       |    |
 		|       |       |    |       |-------|       |-------|
-		|   ~   |       |  ~ |       |   ~   |       |  V^T  |
-		|   A   |   =   |  U |   x   |   S   |   x   |-------|
-		|       |       |    |       |-------|
+		|   ~   |       |  ~ |       |   ~   |       |   ~   |
+		|   A   |   =   |  U |   x   |   S   |   x   |	V^T  |
+		|       |       |    |       |-------|		 |-------|
 		|       |       |    |
 		|       |       |    |
 		|-------|       |----|
@@ -256,6 +261,7 @@ class MORsimpleEnv(simpleEnv):
 		   mxn           mxr            rxr             rxn
 
 	"""
+
 	def __init__(self, **kwargs):
 		super(MORsimpleEnv, self).__init__(**kwargs)
 
@@ -264,21 +270,20 @@ class MORsimpleEnv(simpleEnv):
 		U, Sigma, Vt = np.linalg.svd(self.response_matrix)
 		Sigma_trunc = Sigma[:n_evals]
 
-		U_trunc = U[:, :n_evals]        # mxr
+		U_trunc = U[:, :n_evals]  # mxr
 		S_trunc = np.diag(Sigma_trunc)  # rxr
-		Vt_trunc = Vt[:n_evals]         # rxn
+		Vt_trunc = Vt[:n_evals]  # rxn
 
-		B = np.dot(U_trunc, S_trunc)    # mxr
-		A_tilde = np.dot(B, Vt_trunc)   # mxn
+		B = np.dot(U_trunc, S_trunc)  # mxr
+		A_tilde = np.dot(B, Vt_trunc)  # mxn
 
-		self.response_matrix = B        # mxr
-		self.action_decoder = Vt_trunc     # rxn
+		self.response_matrix = B  # mxr
+		self.action_decoder = Vt_trunc  # rxn
 
 		self.reduced_response_matrix = np.dot(B, Vt_trunc)
 
 	def actionFromFeature(self, z):
 		return np.dot(z, self.action_decoder)
-
 
 	def testActualModel(self, action):
 		actual_action_vector = np.dot(action, self.decoder)
@@ -288,7 +293,7 @@ class MORsimpleEnv(simpleEnv):
 
 
 if __name__ == '__main__':
-	env=simpleEnv()
+	env = simpleEnv()
 
 	rewards = []
 	for _ in range(1000):
@@ -299,10 +304,3 @@ if __name__ == '__main__':
 			env.render(rewards)
 
 		print(f"resetting")
-
-	# env.initial_conditions.Print()
-	# env.states.Print()
-	# env.actions.Print()
-	# env.rewards.Print()
-
-
