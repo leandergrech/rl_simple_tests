@@ -7,3 +7,7 @@ register(id='simpleEnv-v0',
 register(id='MORsimpleEnv-v0',
          entry_point='simpleEnv.envs:MORsimpleEnv'
          )
+
+register(id='deltaSimpleEnv-v0',
+         entry_point='simpleEnv.envs:deltaSimpleEnv'
+         )

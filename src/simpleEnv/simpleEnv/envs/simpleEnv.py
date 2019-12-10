@@ -120,7 +120,8 @@ class simpleEnv(gym.Env):
 
 	def _random_rm(self):
 		kw = self.rm_kwargs
-		sz, mu, std, lo, hi = kw['rm_size'], kw['rm_element_mu'], kw['rm_element_std'], kw['rm_element_clip_low'], kw['rm_element_clip_high']
+		sz, mu, std, lo, hi = kw['rm_size'], kw['rm_element_mu'], kw['rm_element_std'], kw['rm_element_clip_low'], kw[
+			'rm_element_clip_high']
 
 		return np.clip(np.random.normal(mu, std, (sz, sz)), lo, hi)
 
@@ -228,6 +229,57 @@ class simpleEnv(gym.Env):
 
 		plt.draw()
 		plt.pause(0.05)
+
+
+class deltaSimpleEnv(simpleEnv):
+	def __init__(self, **kwargs):
+		super(deltaSimpleEnv, self).__init__(**kwargs)
+		self.cumul_state = None
+
+	def reset(self):
+		self.curr_episode += 1
+		self.curr_step = 0
+		self.cumul_state = np.zeros(self.obs_dimension)
+
+		for item in [self.rewards, self.states, self.actions]:
+			item.add_episode()
+
+		self.done = False
+
+		init_delta_action = self.action_space.sample() / 10
+		init_delta_state, init_reward = self._take_action(init_delta_action)
+
+		self.initial_conditions.add_episode()
+		self.initial_conditions.push_stat(init_delta_action)
+
+		self.current_state = init_delta_state
+		self.last_action = init_delta_action
+
+		self.cumul_state += init_delta_state
+
+		return init_delta_state
+
+	def _objective(self, next_state):
+		return -np.sqrt(np.mean(np.square(next_state)))
+
+	def step(self, action):
+		self.curr_step += 1
+		next_delta_state, _ = self._take_action(action)
+
+		self.last_action = action
+		self.current_state = next_delta_state
+
+		self.cumul_state += next_delta_state
+		reward = self._objective(self.cumul_state)
+
+		# TODO check if lower reward threshold should be set as well
+		if reward > self.reward_threshold or self.curr_step > self.MAX_TIME:
+			self.done = True
+
+		for epochStat, stat in zip([self.rewards, self.states, self.actions], [reward, next_delta_state, action]):
+			epochStat.push_stat(stat)
+
+		return next_delta_state, reward, self.done, {}
 
 
 class MORsimpleEnv(simpleEnv):

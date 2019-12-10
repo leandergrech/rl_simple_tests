@@ -13,20 +13,23 @@ if __name__ == '__main__':
 	parser.add_argument('total_timesteps')
 	args = parser.parse_args()
 
-	env = gym.make('simpleEnv:simpleEnv-v0')
+	# n_evals = 20
+	SIZE = 5
+	# env = gym.make('simpleEnv:MORsimpleEnv-v0', rm_use_last=True, rm_kwargs=dict(rm_size=SIZE, n_evals=n_evals))
+	env = gym.make('simpleEnv:deltaSimpleEnv-v0', rm_use_last=False, rm_kwargs=dict(rm_size=SIZE))
 	print('\n\n')
 	print(f"Starting training on env having shape = {env.response_matrix.shape}")
 	print('\n\n')
 
 	env = DummyVecEnv([lambda: env])
 
-	layers = [350, 350]
-	net_arch = [dict(vf=layers, pi=layers)]
+	# layers = [100]
+	# net_arch = [dict(vf=layers, pi=layers)]
 	# myMlpPolicy = partial(MlpPolicy, net_arch=net_arch)
 
-
-	# model = PPO2(MlpPolicy, env, policy_kwargs={"net_arch":net_arch}, gamma=0.99, n_steps=500, tensorboard_log='log', verbose=1)
-	model = SAC('MlpPolicy', env, tensorboard_log='log', verbose=1)
+	# model = PPO2(MlpPolicy, env, policy_kwargs={"net_arch":net_arch}, gamma=0.99, n_steps=500, tensorboard_log='log_ppo2_MOR_big', verbose=1)
+	model = PPO2(MlpPolicy, env, gamma=0.99, n_steps=500, tensorboard_log='log_ppo2_delta',verbose=1)
+	# model = SAC('MlpPolicy', env, tensorboard_log='log', verbose=1)
 
 	sleep(1)
 
@@ -35,6 +38,5 @@ if __name__ == '__main__':
 	except KeyboardInterrupt:
 		pass
 
-
-	model.save('simpleEnv-full550x550-mlp600x600')
-
+	# model.save(f'MORsimpleEnv-{SIZE}x{SIZE}-{n_evals}n_evals-1layer100nodes.zip')
+	model.save(f'MORsimpleEnv-{SIZE}x{SIZE}-n_evals.zip')
